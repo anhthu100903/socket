@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Chat</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef1f7;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .admin-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f4f6f9;
+        }
+
+        tr:hover {
+            background-color: #e2e6ea;
+        }
+
+        .selected {
+            background-color: #d1ecf1 !important;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            resize: none;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .status-success {
+            color: green;
+        }
+
+        .status-fail {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h2>🛠️ Bảng điều khiển Admin</h2>
+
+        <div class="client-list">
+            <h3>👥 Danh sách client đang kết nối:</h3>
+            <table id="clientTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Trạng thái</th>
+                        <th>Tin nhắn mới nhất</th>
+                        <th>Chọn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4">-- Đang tải... --</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="message-box">
+            <label for="adminMessage">💬 Nội dung tin nhắn:</label>
+            <textarea id="adminMessage" rows="4" placeholder="Nhập tin nhắn tại đây..."></textarea>
+            <button id="sendBtn">📨 Gửi đến client đã chọn</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/admin/');
+        let selectedClientId = null;
+
+        socket.onopen = function () {
+            console.log("✅ Kết nối với admin WebSocket server.");
+        };
+
+        socket.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+            const tableBody = document.querySelector('#clientTable tbody');
+
+            if (data.type === 'clients') {
+                tableBody.innerHTML = ''; // Clear current list
+                if (data.clients.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4">-- Không có client nào đang kết nối --</td></tr>';
+                    selectedClientId = null;
+                } else {
+                    data.clients.forEach(client => {
+                        const row = document.createElement('tr');
+                        row.dataset.clientId = client.id;
+                        row.innerHTML = `
+                            <td>${client.id}</td>
+                            <td>🟢 Online</td>
+                            <td>${client.lastMessage || '-- Chưa có tin nhắn --'}</td>
+                            <td><button onclick="selectClient(${client.id}, this)">Chọn</button></td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+            } else if (data.type === 'status') {
+                const statusDiv = document.getElementById('status');
+                statusDiv.textContent = data.message;
+                statusDiv.className = data.message.includes("✅") ? "status-success" : "status-fail";
+            } else if (data.type === 'newMessage') {
+                // Cập nhật tin nhắn mới của client
+                const clientRow = document.querySelector(`tr[data-client-id="${data.clientId}"]`);
+                if (clientRow) {
+                    clientRow.cells[2].textContent = data.message;
+                }
+            }
+        };
+
+        function selectClient(clientId, btn) {
+            selectedClientId = clientId;
+            // Remove previous selections
+            document.querySelectorAll('#clientTable tr').forEach(tr => tr.classList.remove('selected'));
+            // Highlight selected row
+            btn.closest('tr').classList.add('selected');
+        }
+
+        document.getElementById('sendBtn').onclick = function () {
+            const message = document.getElementById('adminMessage').value;
+            if (!selectedClientId) {
+                alert("⚠️ Vui lòng chọn một client trước khi gửi tin nhắn.");
+                return;
+            }
+            if (message.trim() === '') {
+                alert("⚠️ Tin nhắn không được để trống.");
+                return;
+            }
+
+            socket.send(JSON.stringify({
+                target_client: selectedClientId,
+                message: message
+            }));
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# 1. Mở VS Code trong WSL
+wsl
+code .
+
+# 2. Tạo môi trường ảo
+python -m venv venv
+
+# 3. Kích hoạt môi trường ảo (nên làm bước này trước khi cài đặt)
+source venv/bin/activate
+
+# 4. Cài đặt thư viện
+pip install -r requirements.txt
+
+# (Tùy chọn) Nếu bạn quên thêm `daphne` vào file requirements thì cài riêng
+pip install daphne
+
+# 5. Chạy server bằng Daphne
+daphne -b 127.0.0.1 -p 8000 project_chat.asgi:application
+
+chạy portserver :  127.0.0.1:8000
+client(mở nhiều tab) : 127.0.0.1:8000/client1/

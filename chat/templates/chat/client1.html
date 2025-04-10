@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client 1</title>
+</head>
+<body>
+    <h1>WebSocket Chat - Client 1</h1>
+    <div id="messages" style="border: 1px solid black; height: 300px; overflow-y: scroll; padding: 10px;"></div>
+    <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." />
+    <button id="sendButton">Gửi</button>
+
+    <script>
+        const chatSocket = new WebSocket('ws://' + window.location.host + '/ws/chat/');
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const message = data.message;
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += `<p>${message}</p>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('WebSocket bị đóng.');
+        };
+
+        document.getElementById('sendButton').onclick = function() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value;
+            chatSocket.send(JSON.stringify({ 'message': message }));
+            messageInput.value = '';
+        };
+    </script>
+</body>
+</html>
